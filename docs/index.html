@@ -170,6 +170,15 @@
     <div class="card">
       <h2>إنشاء عهدة جديدة بنفس القالب</h2>
       <p class="muted">أضف شركة أو أكثر، ثم أدخل البنود واختر التصنيف والمبلغ. عند التصدير ينشأ ملف Excel بنفس أعمدة قالبك مع الإجماليات محسوبة.</p>
+      <datalist id="catlist">
+        <option value="م. ادوات مكتبية و قرطاسية"></option>
+        <option value="رسوم حكومية"></option>
+        <option value="شراء اصول"></option>
+        <option value="تسديد اشتراكات عمومية"></option>
+        <option value="الشركة السعودية للكهرباء"></option>
+        <option value="صيانة مكتبية"></option>
+        <option value="تذاكر سفر"></option>
+      </datalist>
       <div class="controls" style="margin-top: 14px;">
         <input type="text" id="newCompanyName" placeholder="اسم الشركة (مثال: مسقا للاستثمار)">
         <button class="btn secondary" id="addCompanyBtn">+ إضافة شركة</button>
@@ -469,7 +478,7 @@ document.getElementById("addCompanyBtn").addEventListener("click", () => {
   const input = document.getElementById("newCompanyName");
   const name = input.value.trim();
   if (!name) { input.focus(); return; }
-  builderCompanies.push({ name, entries: [{ desc: "", cat: 1, amount: "" }] });
+  builderCompanies.push({ name, entries: [{ desc: "", cat: "رسوم حكومية", amount: "" }] });
   input.value = "";
   renderBuilder();
 });
@@ -484,9 +493,7 @@ function renderBuilder() {
     const rows = co.entries.map((e, ei) => `
       <div class="entry-row">
         <input type="text" placeholder="البيان (مثال: تجديد إقامة...)" value="${esc(e.desc)}" data-f="desc" data-ci="${ci}" data-ei="${ei}">
-        <select data-f="cat" data-ci="${ci}" data-ei="${ei}">
-          ${DEFAULT_CATEGORIES.map((c, i) => `<option value="${i}" ${i === e.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}
-        </select>
+        <input type="text" list="catlist" placeholder="التصنيف (اختر أو اكتب جديد)" value="${esc(e.cat)}" data-f="cat" data-ci="${ci}" data-ei="${ei}">
         <input type="number" step="0.01" min="0" placeholder="المبلغ" value="${esc(e.amount)}" data-f="amount" data-ci="${ci}" data-ei="${ei}">
         <button class="btn small danger" data-delrow="${ci}:${ei}">✕</button>
       </div>`).join("");
@@ -506,7 +513,7 @@ function renderBuilder() {
   el.querySelectorAll("[data-f]").forEach((inp) => inp.addEventListener("input", () => {
     const ci = Number(inp.dataset.ci);
     const e = builderCompanies[ci].entries[inp.dataset.ei];
-    if (inp.dataset.f === "cat") e.cat = Number(inp.value);
+    if (inp.dataset.f === "cat") e.cat = inp.value;
     else if (inp.dataset.f === "amount") {
       e.amount = inp.value;
       const total = builderCompanies[ci].entries.reduce((s, x) => s + (Number(x.amount) || 0), 0);
@@ -514,7 +521,7 @@ function renderBuilder() {
     } else e.desc = inp.value;
   }));
   el.querySelectorAll("[data-addrow]").forEach((b) => b.addEventListener("click", () => {
-    builderCompanies[b.dataset.addrow].entries.push({ desc: "", cat: 1, amount: "" });
+    builderCompanies[b.dataset.addrow].entries.push({ desc: "", cat: "رسوم حكومية", amount: "" });
     renderBuilder();
   }));
   el.querySelectorAll("[data-delrow]").forEach((b) => b.addEventListener("click", () => {
@@ -534,15 +541,22 @@ document.getElementById("exportBuilderBtn").addEventListener("click", () => {
   const record = {
     fileName: "عهدة جديدة",
     sheets: builderCompanies.map((co) => {
+      // الأعمدة: التصنيفات المعتمدة + أي تصنيف جديد أضافه المستخدم (بترتيب أول ظهور)
+      const categories = [...DEFAULT_CATEGORIES];
+      co.entries.forEach((e) => {
+        const c = (e.cat || "").trim();
+        if (c && !categories.includes(c)) categories.push(c);
+      });
       const entries = co.entries
         .filter((e) => e.desc.trim())
         .map((e) => {
-          const amounts = DEFAULT_CATEGORIES.map((_, i) => (i === e.cat ? Number(e.amount) || 0 : null));
+          const c = (e.cat || "").trim();
+          const amounts = categories.map((cat) => (cat === c ? Number(e.amount) || 0 : null));
           return { desc: e.desc.trim(), amounts, total: Number(e.amount) || 0 };
         });
-      const catTotals = DEFAULT_CATEGORIES.map((_, c) => entries.reduce((s, e) => s + (e.amounts[c] || 0), 0));
+      const catTotals = categories.map((_, c) => entries.reduce((s, e) => s + (e.amounts[c] || 0), 0));
       return {
-        name: co.name, categories: DEFAULT_CATEGORIES, entries, catTotals,
+        name: co.name, categories, entries, catTotals,
         grandTotal: catTotals.reduce((s, v) => s + v, 0),
       };
     }),
