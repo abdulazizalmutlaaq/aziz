@@ -182,7 +182,8 @@
       <div class="controls" style="margin-top: 14px;">
         <input type="text" id="newCompanyName" placeholder="اسم الشركة (مثال: مسقا للاستثمار)">
         <button class="btn secondary" id="addCompanyBtn">+ إضافة شركة</button>
-        <button class="btn" id="exportBuilderBtn">⬇️ تصدير ملف العهدة</button>
+        <button class="btn" id="saveBuilderBtn">💾 حفظ في الأرشيف</button>
+        <button class="btn secondary" id="exportBuilderBtn">⬇️ تصدير ملف العهدة</button>
         <button class="btn secondary" id="templateBtn">⬇️ تنزيل قالب فارغ</button>
       </div>
     </div>
@@ -536,10 +537,9 @@ function renderBuilder() {
 }
 renderBuilder();
 
-document.getElementById("exportBuilderBtn").addEventListener("click", () => {
-  if (!builderCompanies.length) { alert("أضف شركة واحدة على الأقل."); return; }
-  const record = {
-    fileName: "عهدة جديدة",
+function buildRecordFromBuilder(fileName) {
+  return {
+    fileName: fileName || "عهدة جديدة",
     sheets: builderCompanies.map((co) => {
       // الأعمدة: التصنيفات المعتمدة + أي تصنيف جديد أضافه المستخدم (بترتيب أول ظهور)
       const categories = [...DEFAULT_CATEGORIES];
@@ -561,7 +561,29 @@ document.getElementById("exportBuilderBtn").addEventListener("click", () => {
       };
     }),
   };
-  exportRecord(record);
+}
+
+function builderHasEntries() {
+  return builderCompanies.some((co) => co.entries.some((e) => e.desc.trim()));
+}
+
+document.getElementById("exportBuilderBtn").addEventListener("click", () => {
+  if (!builderHasEntries()) { alert("أضف بنداً واحداً على الأقل (بيان + مبلغ)."); return; }
+  exportRecord(buildRecordFromBuilder("عهدة جديدة"));
+});
+
+document.getElementById("saveBuilderBtn").addEventListener("click", () => {
+  if (!builderHasEntries()) { alert("أضف بنداً واحداً على الأقل (بيان + مبلغ)."); return; }
+  const suggested = builderCompanies.map((c) => c.name).join(" + ") || "عهدة جديدة";
+  const name = (prompt("اسم العهدة في الأرشيف:", suggested) || "").trim();
+  if (name === "") return; // ألغى المستخدم
+  const record = buildRecordFromBuilder(name);
+  record.id = Date.now();
+  record.uploadedAt = new Date().toISOString();
+  saveToArchive(record);
+  builderCompanies = [];
+  renderBuilder();
+  document.querySelector('nav.tabs button[data-panel="archive"]').click();
 });
 
 document.getElementById("templateBtn").addEventListener("click", () => {
