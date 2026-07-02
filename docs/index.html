@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام العُهد — رفع ومعالجة ملفات العهدة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="xlsx.full.min.js"></script>
+<style>
+  :root {
+    --ink: #14201c;
+    --paper: #f6f8f7;
+    --card: #ffffff;
+    --line: #dde5e1;
+    --accent: #0d6b52;
+    --accent-soft: #e3f1ec;
+    --accent-dark: #084a39;
+    --ash: #5f6f69;
+    --danger: #b03030;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "IBM Plex Sans Arabic", system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+  header.site {
+    background: var(--accent-dark);
+    color: #fff;
+    padding: 20px 24px;
+  }
+  header.site .wrap { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  header.site h1 { font-size: 22px; font-weight: 700; }
+  header.site p { font-size: 13px; opacity: .85; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+
+  nav.tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  nav.tabs button {
+    font: inherit; font-weight: 600; font-size: 15px;
+    padding: 10px 22px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--card); color: var(--ash);
+    cursor: pointer;
+  }
+  nav.tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  section.panel { display: none; }
+  section.panel.active { display: block; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+  }
+  h2 { font-size: 18px; margin-bottom: 12px; }
+  h3 { font-size: 15px; margin-bottom: 8px; }
+  .muted { color: var(--ash); font-size: 13px; }
+
+  /* Upload zone */
+  #dropzone {
+    border: 2px dashed var(--accent);
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+    padding: 42px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  #dropzone.drag { background: #cfe8de; }
+  #dropzone strong { color: var(--accent-dark); font-size: 17px; display: block; margin-bottom: 6px; }
+
+  /* Summary cards */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 18px 0; }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .stat .label { font-size: 12px; color: var(--ash); }
+  .stat .value { font-size: 22px; font-weight: 700; color: var(--accent-dark); }
+
+  /* Sheet tabs */
+  .sheet-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .sheet-tabs button {
+    font: inherit; font-size: 13px; font-weight: 600;
+    padding: 6px 16px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--ash);
+  }
+  .sheet-tabs button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-dark); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
+  th, td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  td.desc { white-space: normal; min-width: 220px; font-weight: 500; }
+  thead th { background: var(--accent-dark); color: #fff; font-weight: 600; position: sticky; top: 0; }
+  tbody tr:nth-child(even) { background: #fafcfb; }
+  tr.totals td { background: var(--accent-soft); font-weight: 700; color: var(--accent-dark); border-top: 2px solid var(--accent); }
+  td.num { font-variant-numeric: tabular-nums; direction: ltr; text-align: left; }
+  td.rowtotal { font-weight: 700; }
+
+  /* Controls */
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  input[type=text], input[type=number], select {
+    font: inherit; font-size: 14px; padding: 8px 12px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink);
+  }
+  input[type=text]#search { flex: 1; min-width: 200px; }
+  .btn {
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 9px 18px; border-radius: 8px; border: 1px solid var(--accent);
+    background: var(--accent); color: #fff;
+  }
+  .btn.secondary { background: var(--card); color: var(--accent-dark); }
+  .btn.danger { background: var(--card); color: var(--danger); border-color: var(--danger); }
+  .btn.small { padding: 5px 12px; font-size: 12px; }
+
+  /* Archive list */
+  .archive-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card); margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .archive-item .meta { font-size: 12px; color: var(--ash); }
+  .archive-item .actions { display: flex; gap: 6px; }
+
+  /* Builder */
+  .entry-row { display: grid; grid-template-columns: 2fr 1.2fr .8fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+  @media (max-width: 640px) { .entry-row { grid-template-columns: 1fr; } }
+  .company-block { border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; background: #fcfdfd; }
+  .company-block header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; flex-wrap: wrap; }
+
+  footer { text-align: center; color: var(--ash); font-size: 12px; padding: 20px; }
+  .empty { text-align: center; color: var(--ash); padding: 30px 10px; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <div>
+      <h1>📋 نظام العُهد</h1>
+      <p>رفع ملفات العهدة بعد التصفية، معالجتها تلقائياً، وأرشفتها — كل شيء يعمل داخل متصفحك</p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <nav class="tabs">
+    <button data-panel="upload" class="active">📤 رفع عهدة</button>
+    <button data-panel="builder">✍️ إنشاء عهدة جديدة</button>
+    <button data-panel="archive">🗂️ الأرشيف <span id="archiveCount"></span></button>
+  </nav>
+
+  <!-- ============ UPLOAD PANEL ============ -->
+  <section class="panel active" id="panel-upload">
+    <div class="card">
+      <div id="dropzone">
+        <strong>اسحب ملف العهدة هنا أو اضغط للاختيار</strong>
+        <span class="muted">ملف Excel (xlsx / xls) — كل ورقة تمثل شركة، بنفس قالب العهدة المعتمد</span>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" hidden>
+      </div>
+    </div>
+    <div id="result"></div>
+  </section>
+
+  <!-- ============ BUILDER PANEL ============ -->
+  <section class="panel" id="panel-builder">
+    <div class="card">
+      <h2>إنشاء عهدة جديدة بنفس القالب</h2>
+      <p class="muted">أضف شركة أو أكثر، ثم أدخل البنود واختر التصنيف والمبلغ. عند التصدير ينشأ ملف Excel بنفس أعمدة قالبك مع الإجماليات محسوبة.</p>
+      <div class="controls" style="margin-top: 14px;">
+        <input type="text" id="newCompanyName" placeholder="اسم الشركة (مثال: مسقا للاستثمار)">
+        <button class="btn secondary" id="addCompanyBtn">+ إضافة شركة</button>
+        <button class="btn" id="exportBuilderBtn">⬇️ تصدير ملف العهدة</button>
+        <button class="btn secondary" id="templateBtn">⬇️ تنزيل قالب فارغ</button>
+      </div>
+    </div>
+    <div id="builderCompanies"></div>
+  </section>
+
+  <!-- ============ ARCHIVE PANEL ============ -->
+  <section class="panel" id="panel-archive">
+    <div class="card">
+      <h2>أرشيف العُهد</h2>
+      <p class="muted">العهد المرفوعة تُحفظ محلياً في متصفحك (localStorage). لا تُرسل بياناتك لأي خادم.</p>
+    </div>
+    <div id="archiveList"></div>
+  </section>
+
+</main>
+
+<footer>يعمل هذا الموقع بالكامل داخل المتصفح — لا يتم رفع أي بيانات إلى الإنترنت.</footer>
+
+<script>
+"use strict";
+
+/* ---------- التصنيفات الافتراضية (من قالب العهدة) ---------- */
+const DEFAULT_CATEGORIES = [
+  "م. ادوات مكتبية و قرطاسية",
+  "رسوم حكومية",
+  "شراء اصول",
+  "تسديد اشتراكات عمومية",
+  "الشركة السعودية للكهرباء",
+  "صيانة مكتبية",
+  "تذاكر سفر",
+];
+
+/* سطر التوقيعات المعتمد في القالب (يُدرج أسفل الملف المُصدَّر) */
+const SIGNATURE_ROW = [
+  "مسؤول العهدة \nعبدالعزيز المطلق ", "المحاسب \nاحمد فرحان", null, null,
+  "المدير المالي \nشريف فودة ", null, null, "المدير التنفيذي \nغنام الصقري", null,
+];
+
+const fmt = (n) => (typeof n === "number" && isFinite(n))
+  ? n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "";
+const cleanHeader = (h) => String(h ?? "").replace(/\s+/g, " ").trim();
+const isTotalsLabel = (s) => /^(المجموع|الإجمالي|الاجمالي)/.test(String(s).trim());
+
+/* ---------- التنقل بين الألسنة ---------- */
+document.querySelectorAll("nav.tabs button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll("section.panel").forEach((p) => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("panel-" + btn.dataset.panel).classList.add("active");
+  });
+});
+
+/* ==================================================================
+   1) قراءة ومعالجة ملف العهدة
+================================================================== */
+function parseWorkbook(wb, fileName) {
+  const record = { id: Date.now(), fileName, uploadedAt: new Date().toISOString(), sheets: [] };
+  for (const name of wb.SheetNames) {
+    const ws = wb.Sheets[name];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+    if (!rows.length) continue;
+
+    const headers = rows[0].map(cleanHeader);
+    // أعمدة التصنيف: كل الأعمدة بين "البيان" و"الإجمالي"
+    let lastCat = headers.length - 1;
+    if (headers[lastCat] && headers[lastCat].includes("الإجمالي")) lastCat -= 1;
+    const categories = headers.slice(1, lastCat + 1);
+
+    const entries = [];
+    const footerRows = [];
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      if (!row || row[0] == null || String(row[0]).trim() === "") continue;
+      const desc = String(row[0]).trim();
+      // صف المجموع الجاهز في الملف: يُتجاهل ويُعاد حسابه تلقائياً
+      if (isTotalsLabel(desc)) continue;
+      const amounts = categories.map((_, c) => {
+        const v = row[c + 1];
+        return typeof v === "number" ? v : (v != null && v !== "" && !isNaN(Number(v)) ? Number(v) : null);
+      });
+      const hasNumbers = amounts.some((v) => v !== null);
+      if (!hasNumbers) {
+        // صف بدون أي أرقام (مثل صف التوقيعات): يُحفظ ليعاد إدراجه عند التصدير
+        const hasOtherText = row.slice(1).some((v) => v != null && String(v).trim() !== "");
+        if (hasOtherText) footerRows.push(row);
+        continue;
+      }
+      const total = amounts.reduce((s, v) => s + (v || 0), 0);
+      entries.push({ desc, amounts, total });
+    }
+    if (!entries.length && wb.SheetNames.length > 1) continue;
+
+    const catTotals = categories.map((_, c) => entries.reduce((s, e) => s + (e.amounts[c] || 0), 0));
+    const grandTotal = catTotals.reduce((s, v) => s + v, 0);
+    record.sheets.push({ name, categories, entries, catTotals, grandTotal, footerRows });
+  }
+  return record;
+}
+
+/* ---------- رفع الملف ---------- */
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+let currentRecord = null;
+
+dropzone.addEventListener("click", () => fileInput.click());
+dropzone.addEventListener("dragover", (e) => { e.preventDefault(); dropzone.classList.add("drag"); });
+dropzone.addEventListener("dragleave", () => dropzone.classList.remove("drag"));
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault(); dropzone.classList.remove("drag");
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+      currentRecord = parseWorkbook(wb, file.name);
+      if (!currentRecord.sheets.length) {
+        document.getElementById("result").innerHTML =
+          '<div class="card"><p class="empty">لم يتم العثور على بيانات في الملف. تأكد أن الصف الأول يحتوي على العناوين وأن عمود «البيان» معبأ.</p></div>';
+        return;
+      }
+      saveToArchive(currentRecord);
+      renderRecord(currentRecord, document.getElementById("result"), true);
+    } catch (err) {
+      document.getElementById("result").innerHTML =
+        '<div class="card"><p class="empty">تعذر قراءة الملف: ' + err.message + "</p></div>";
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ---------- عرض العهدة ---------- */
+function renderRecord(record, container, showSaveNote) {
+  const overall = record.sheets.reduce((s, sh) => s + sh.grandTotal, 0);
+  const entryCount = record.sheets.reduce((s, sh) => s + sh.entries.length, 0);
+
+  let html = "";
+  if (showSaveNote) html += '<p class="muted" style="margin-bottom:10px">✅ تم تحليل الملف وحفظه في الأرشيف تلقائياً.</p>';
+  html += '<div class="stats">' +
+    stat("إجمالي العهدة (كل الشركات)", fmt(overall) + " ريال") +
+    stat("عدد الشركات", record.sheets.length) +
+    stat("عدد البنود", entryCount) +
+    stat("الملف", record.fileName) +
+    "</div>";
+
+  html += '<div class="card">';
+  html += '<div class="controls">' +
+    '<input type="text" id="search" placeholder="🔍 بحث في البيان...">' +
+    '<button class="btn" id="downloadProcessed">⬇️ تنزيل الملف المعالج (مع الإجماليات)</button>' +
+    "</div>";
+
+  if (record.sheets.length > 1) {
+    html += '<div class="sheet-tabs">' + record.sheets.map((sh, i) =>
+      `<button data-sheet="${i}" class="${i === 0 ? "active" : ""}">${esc(sh.name)} — ${fmt(sh.grandTotal)}</button>`
+    ).join("") + "</div>";
+  }
+  html += '<div id="sheetView"></div></div>';
+  container.innerHTML = html;
+
+  let activeSheet = 0;
+  const renderSheet = () => {
+    const q = (document.getElementById("search").value || "").trim();
+    document.getElementById("sheetView").innerHTML = sheetTable(record.sheets[activeSheet], q);
+  };
+  container.querySelectorAll(".sheet-tabs button").forEach((b) => {
+    b.addEventListener("click", () => {
+      container.querySelectorAll(".sheet-tabs button").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+      activeSheet = Number(b.dataset.sheet);
+      renderSheet();
+    });
+  });
+  document.getElementById("search").addEventListener("input", renderSheet);
+  document.getElementById("downloadProcessed").addEventListener("click", () => exportRecord(record));
+  renderSheet();
+}
+
+function stat(label, value) {
+  return `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+}
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function sheetTable(sheet, query) {
+  const entries = query
+    ? sheet.entries.filter((e) => e.desc.includes(query))
+    : sheet.entries;
+  if (!entries.length) return '<p class="empty">لا توجد بنود مطابقة.</p>';
+
+  let html = '<div class="table-wrap"><table><thead><tr><th>البيان</th>';
+  sheet.categories.forEach((c) => (html += `<th>${esc(c)}</th>`));
+  html += "<th>الإجمالي</th></tr></thead><tbody>";
+  entries.forEach((e) => {
+    html += `<tr><td class="desc">${esc(e.desc)}</td>`;
+    e.amounts.forEach((a) => (html += `<td class="num">${fmt(a)}</td>`));
+    html += `<td class="num rowtotal">${fmt(e.total)}</td></tr>`;
+  });
+  // صف الإجماليات (على كامل الورقة وليس نتيجة البحث)
+  html += '<tr class="totals"><td>المجموع</td>';
+  sheet.catTotals.forEach((t) => (html += `<td class="num">${t ? fmt(t) : ""}</td>`));
+  html += `<td class="num">${fmt(sheet.grandTotal)}</td></tr>`;
+  html += "</tbody></table></div>";
+  return html;
+}
+
+/* ---------- تصدير الملف المعالج ---------- */
+function exportRecord(record) {
+  const wb = XLSX.utils.book_new();
+  wb.Workbook = { Views: [{ RTL: true }] };
+  record.sheets.forEach((sheet) => {
+    const aoa = [["البيان", ...sheet.categories, "الإجمالي"]];
+    sheet.entries.forEach((e) => aoa.push([e.desc, ...e.amounts.map((a) => a ?? null), e.total]));
+    aoa.push([]);
+    aoa.push(["المجموع", ...sheet.catTotals.map((t) => t || 0), sheet.grandTotal]);
+    // إعادة إدراج سطر التوقيعات (من الملف الأصلي إن وجد، وإلا من القالب المعتمد)
+    const footer = (sheet.footerRows && sheet.footerRows.length) ? sheet.footerRows : [SIGNATURE_ROW];
+    aoa.push([]);
+    footer.forEach((row) => aoa.push(row.map((c) => (typeof c === "string" ? c.replace(/\r/g, "") : c))));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{ wch: 45 }, ...sheet.categories.map(() => ({ wch: 16 })), { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31));
+  });
+  const base = (record.fileName || "العهدة").replace(/\.(xlsx|xls)$/i, "");
+  XLSX.writeFile(wb, base + " - معالج.xlsx");
+}
+
+/* ==================================================================
+   2) الأرشيف (localStorage)
+================================================================== */
+const ARCHIVE_KEY = "ohda-archive-v1";
+const loadArchive = () => { try { return JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || []; } catch { return []; } };
+const persistArchive = (list) => localStorage.setItem(ARCHIVE_KEY, JSON.stringify(list));
+
+function saveToArchive(record) {
+  const list = loadArchive();
+  list.unshift(record);
+  if (list.length > 50) list.length = 50;
+  try { persistArchive(list); } catch { /* تجاهل امتلاء التخزين */ }
+  renderArchive();
+}
+
+function renderArchive() {
+  const list = loadArchive();
+  document.getElementById("archiveCount").textContent = list.length ? `(${list.length})` : "";
+  const el = document.getElementById("archiveList");
+  if (!list.length) {
+    el.innerHTML = '<div class="card"><p class="empty">لا توجد عهد محفوظة بعد. ارفع ملفاً من لسان «رفع عهدة».</p></div>';
+    return;
+  }
+  el.innerHTML = list.map((r) => {
+    const total = r.sheets.reduce((s, sh) => s + sh.grandTotal, 0);
+    const date = new Date(r.uploadedAt).toLocaleString("ar-SA", { dateStyle: "medium", timeStyle: "short" });
+    return `<div class="archive-item">
+      <div>
+        <strong>${esc(r.fileName)}</strong>
+        <div class="meta">${date} • ${r.sheets.length} شركة • الإجمالي: ${fmt(total)} ريال</div>
+      </div>
+      <div class="actions">
+        <button class="btn small" data-view="${r.id}">عرض</button>
+        <button class="btn small secondary" data-export="${r.id}">تنزيل</button>
+        <button class="btn small danger" data-del="${r.id}">حذف</button>
+      </div>
+    </div>`;
+  }).join("") + '<div id="archiveView"></div>';
+
+  el.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {
+    const rec = loadArchive().find((r) => r.id === Number(b.dataset.view));
+    if (rec) renderRecord(rec, document.getElementById("archiveView"), false);
+  }));
+  el.querySelectorAll("[data-export]").forEach((b) => b.addEventListener("click", () => {
+    const rec = loadArchive().find((r) => r.id === Number(b.dataset.export));
+    if (rec) exportRecord(rec);
+  }));
+  el.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => {
+    persistArchive(loadArchive().filter((r) => r.id !== Number(b.dataset.del)));
+    renderArchive();
+  }));
+}
+renderArchive();
+
+/* ==================================================================
+   3) إنشاء عهدة جديدة
+================================================================== */
+let builderCompanies = [];
+
+document.getElementById("addCompanyBtn").addEventListener("click", () => {
+  const input = document.getElementById("newCompanyName");
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  builderCompanies.push({ name, entries: [{ desc: "", cat: 1, amount: "" }] });
+  input.value = "";
+  renderBuilder();
+});
+
+function renderBuilder() {
+  const el = document.getElementById("builderCompanies");
+  if (!builderCompanies.length) {
+    el.innerHTML = '<div class="card"><p class="empty">أضف اسم الشركة الأولى للبدء.</p></div>';
+    return;
+  }
+  el.innerHTML = builderCompanies.map((co, ci) => {
+    const rows = co.entries.map((e, ei) => `
+      <div class="entry-row">
+        <input type="text" placeholder="البيان (مثال: تجديد إقامة...)" value="${esc(e.desc)}" data-f="desc" data-ci="${ci}" data-ei="${ei}">
+        <select data-f="cat" data-ci="${ci}" data-ei="${ei}">
+          ${DEFAULT_CATEGORIES.map((c, i) => `<option value="${i}" ${i === e.cat ? "selected" : ""}>${esc(c)}</option>`).join("")}
+        </select>
+        <input type="number" step="0.01" min="0" placeholder="المبلغ" value="${esc(e.amount)}" data-f="amount" data-ci="${ci}" data-ei="${ei}">
+        <button class="btn small danger" data-delrow="${ci}:${ei}">✕</button>
+      </div>`).join("");
+    const total = co.entries.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    return `<div class="company-block card">
+      <header>
+        <h3>🏢 ${esc(co.name)} <span class="muted">— الإجمالي: <span data-cototal="${ci}">${fmt(total)}</span> ريال</span></h3>
+        <div class="actions">
+          <button class="btn small secondary" data-addrow="${ci}">+ بند</button>
+          <button class="btn small danger" data-delco="${ci}">حذف الشركة</button>
+        </div>
+      </header>
+      ${rows}
+    </div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-f]").forEach((inp) => inp.addEventListener("input", () => {
+    const ci = Number(inp.dataset.ci);
+    const e = builderCompanies[ci].entries[inp.dataset.ei];
+    if (inp.dataset.f === "cat") e.cat = Number(inp.value);
+    else if (inp.dataset.f === "amount") {
+      e.amount = inp.value;
+      const total = builderCompanies[ci].entries.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+      el.querySelector(`[data-cototal="${ci}"]`).textContent = fmt(total);
+    } else e.desc = inp.value;
+  }));
+  el.querySelectorAll("[data-addrow]").forEach((b) => b.addEventListener("click", () => {
+    builderCompanies[b.dataset.addrow].entries.push({ desc: "", cat: 1, amount: "" });
+    renderBuilder();
+  }));
+  el.querySelectorAll("[data-delrow]").forEach((b) => b.addEventListener("click", () => {
+    const [ci, ei] = b.dataset.delrow.split(":").map(Number);
+    builderCompanies[ci].entries.splice(ei, 1);
+    renderBuilder();
+  }));
+  el.querySelectorAll("[data-delco]").forEach((b) => b.addEventListener("click", () => {
+    builderCompanies.splice(Number(b.dataset.delco), 1);
+    renderBuilder();
+  }));
+}
+renderBuilder();
+
+document.getElementById("exportBuilderBtn").addEventListener("click", () => {
+  if (!builderCompanies.length) { alert("أضف شركة واحدة على الأقل."); return; }
+  const record = {
+    fileName: "عهدة جديدة",
+    sheets: builderCompanies.map((co) => {
+      const entries = co.entries
+        .filter((e) => e.desc.trim())
+        .map((e) => {
+          const amounts = DEFAULT_CATEGORIES.map((_, i) => (i === e.cat ? Number(e.amount) || 0 : null));
+          return { desc: e.desc.trim(), amounts, total: Number(e.amount) || 0 };
+        });
+      const catTotals = DEFAULT_CATEGORIES.map((_, c) => entries.reduce((s, e) => s + (e.amounts[c] || 0), 0));
+      return {
+        name: co.name, categories: DEFAULT_CATEGORIES, entries, catTotals,
+        grandTotal: catTotals.reduce((s, v) => s + v, 0),
+      };
+    }),
+  };
+  exportRecord(record);
+});
+
+document.getElementById("templateBtn").addEventListener("click", () => {
+  const wb = XLSX.utils.book_new();
+  wb.Workbook = { Views: [{ RTL: true }] };
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["البيان", ...DEFAULT_CATEGORIES, "الإجمالي"],
+    [], [], [], [], [],
+    SIGNATURE_ROW,
+  ]);
+  ws["!cols"] = [{ wch: 45 }, ...DEFAULT_CATEGORIES.map(() => ({ wch: 16 })), { wch: 14 }];
+  XLSX.utils.book_append_sheet(wb, ws, "الشركة");
+  XLSX.writeFile(wb, "قالب العهدة.xlsx");
+});
+</script>
+</body>
+</html>
