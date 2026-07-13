@@ -1,0 +1,76 @@
+# قالب ملف تعريف career-ops بالعربية — نقطة بداية جاهزة
+#
+# للاستخدام: انسخه إلى config/profile.yml ثم املأ بياناتك:
+#   cp config/profile.ar.example.yml config/profile.yml
+# (ملف profile.yml مُستبعد من git لأنه يحوي بياناتك الشخصية — لا تلتزم به.)
+#
+# هذا هو المصدر الوحيد لبياناتك الشخصية عبر كل الأوامر (modes).
+# الحقول المطلوبة معبّأة بأمثلة عربية — استبدلها ببياناتك.
+# الحقول المتقدمة معلّقة بعلامة # فعّلها عند الحاجة فقط.
+
+candidate:
+  full_name: "اكتب اسمك الكامل"
+  email: "your.email@example.com"
+  phone: "+966-5x-xxx-xxxx"
+  wechat: ""                       # اتركه فارغًا (غير مستخدم لدينا)
+  location: "الرياض، السعودية"
+  linkedin: "linkedin.com/in/username"
+  portfolio_url: ""                # رابط أعمالك إن وجد
+  github: "github.com/username"
+  twitter: ""
+  photo: ""                        # اتركه فارغًا: أغلب أنظمة ATS تخصم على الصورة
+
+target_roles:
+  # أدوارك المستهدفة — ما الذي تبحث عنه
+  primary:
+    - "مهندس برمجيات"
+    - "مهندس ذكاء اصطناعي"
+  archetypes:
+    - name: "Software Engineer"
+      level: "Mid/Senior"
+      fit: "primary"               # primary = الحلم، secondary = مناسب، adjacent = طموح
+    - name: "AI/ML Engineer"
+      level: "Mid"
+      fit: "secondary"
+
+narrative:
+  headline: "سطر واحد يصف هويتك المهنية"
+  exit_story: "ما الذي يميّزك؟ قصتك المهنية باختصار."
+  superpowers:
+    - "نقطة قوة 1"
+    - "نقطة قوة 2"
+    - "نقطة قوة 3"
+  proof_points:
+    - name: "مشروع أو إنجاز"
+      url: ""
+      hero_metric: "أثر قابل للقياس (مثال: خفض زمن الاستجابة 40%)"
+
+compensation:
+  target_range: "المدى المستهدف للراتب الإجمالي"
+  currency: "SAR"
+  minimum: "الحد الأدنى الذي تقبله"
+  location_flexibility: "عن بُعد مفضّل، أو حضور جزئي حسب الحاجة"
+
+location:
+  country: "Saudi Arabia"
+  city: "الرياض"
+  timezone: "AST"
+  visa_status: "لا أحتاج كفالة/تأشيرة"
+
+language:
+  # لغة المخرجات الموجّهة للبشر (التقارير، السير، الخطابات، الرسائل).
+  output: ar
+  # modes_dir: modes/de   # اختياري: مفردات سوق معيّن مع إبقاء اللغة عربية
+
+# مستوى النموذج المستخدم في التقييم:
+#   economy  = الأرخص والأسرع (مناسب للمسح بكميات كبيرة)
+#   standard = متوازن (الافتراضي)
+#   premium  = الأقوى (للعروض عالية الأهمية)
+spend_tier: standard
+
+cv:
+  output_format: "html"            # "html" (افتراضي) أو "latex"
+
+cover_letter:
+  notice_period_days: 30           # مدة الإشعار بالأيام
+  primary_domain: "مجالك المهني الحالي"
